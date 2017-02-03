@@ -36,7 +36,7 @@
             if(downloadAudioToServer($URL_AUDIO_TELEGRAM, $PATH_AUDIO_SERVER)){
 
                 $URL_AUDIO_SERVER = SERVER_URL_BASE . 'bot' . PATH_AUDIO_SERVER;
-                
+
                 sendMessage($mensagem->chat, $URL_AUDIO_SERVER);
 
                 echo 'URL audio: ' . $URL_AUDIO_SERVER . "\n";
@@ -85,17 +85,18 @@
         return file_put_contents($PATH_TO, fopen($URL_FROM, 'r'));
     }
     function getPathNameWithFileToStore($FILE_PATH){
-        $PATH_DIR = 'file';
+        $PATH_DIR = __DIR__ . '/file/';
+        
         if(!is_dir($PATH_DIR)){
             mkdir($PATH_DIR);
         }
 
         $NAME_FILE = date('Ymd-His');
         $EXTENSAO = strrchr($FILE_PATH, '.');
-        $PATH_FULL = $PATH_DIR . '/' . $NAME_FILE . $EXTENSAO;
+        $PATH_FULL = $PATH_DIR . $NAME_FILE . $EXTENSAO;
         $i = 1;
         while(file_exists($PATH_FULL)){
-            $PATH_FULL = $PATH_DIR . '/' . $NAME_FILE . '_' . $i . $EXTENSAO;
+            $PATH_FULL = $PATH_DIR . $NAME_FILE . '_' . $i . $EXTENSAO;
             $i++;
         }
 
