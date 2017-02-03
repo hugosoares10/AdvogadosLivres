@@ -1,0 +1,8 @@
+applications:
+- path: .
+  memory: 128M
+  instances: 1
+  domain: mybluemix.net
+  name: Advogados Livres
+  host: AdvogadosLivres
+  disk_quota: 1024M
