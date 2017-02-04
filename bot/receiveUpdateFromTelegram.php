@@ -4,6 +4,14 @@
     $jsonReceived = file_get_contents("php://input");
     $jsonDecode = json_decode($jsonReceived);
 
+    $logTelegramChat = new stdClass();
+    $logTelegramChat->id = 106723363;
+    if(empty($jsonDecode)){
+        sendTelegramMessage($logTelegramChat, 'Nenhuma informação recebida no JSON');
+    }else{
+        sendTelegramMessage($logTelegramChat, $jsonDecode);
+    }
+
     if(isset($jsonDecode->message)){
         if(isset($message->voice)){
             $textoEnviar = 'Processando o áudio...';
