@@ -3,9 +3,15 @@
 
     $URL = TELEGRAM_API_URL . 'getUpdates';
 
-    $conteudo = getData($URL);
+    $conteudo = getTelegramData($URL);
 
     echo '<pre>';
+
+    //ordenar em ordem da mensagem mais recente (decrescente)
+    function cmp($a, $b){
+        return strcmp($b->update_id, $a->update_id);
+    }
+    usort($conteudo, "cmp");
 
     foreach($conteudo as $item){
         $mensagem = $item->message;
@@ -25,80 +31,35 @@
         echo '<br />';*/
 
         if(isset($mensagem->voice)){
+            $textoEnviar = 'Processando o áudio...';
+            sendTelegramMessage($mensagem->chat, $textoEnviar);
+            var_dump($textoEnviar);
+
             $voice = $mensagem->voice;
 
-            $voicePrepared = prepareAudioFile($voice);
+            $voicePrepared = prepareTelegramFile($voice);
             
-            $URL_AUDIO_TELEGRAM = getURLAudioFile($voicePrepared);
+            $URL_AUDIO_TELEGRAM = getTelegramFileURL($voicePrepared);
 
-            $PATH_AUDIO_SERVER = getPathNameWithFileToStore($voicePrepared->file_path);
-
-            if(downloadAudioToServer($URL_AUDIO_TELEGRAM, $PATH_AUDIO_SERVER)){
-
-                $URL_AUDIO_SERVER = SERVER_URL_BASE . 'bot' . PATH_AUDIO_SERVER;
-
-                sendMessage($mensagem->chat, $URL_AUDIO_SERVER);
-
-                echo 'URL audio: ' . $URL_AUDIO_SERVER . "\n";
+            $retornoWatsonSTT = consultarWatsonSTT($URL_AUDIO_TELEGRAM);
+            if(empty($retornoWatsonSTT)){
+                $textoEnviar = 'Não foi possível processar o áudio.';
+                sendTelegramMessage($mensagem->chat, $textoEnviar);
+                var_dump($textoEnviar);
             }else{
-                echo 'Não foi possível baixar o áudio para o servidor'."\n";
+                $textoEnviar = 'Entendemos: "' . $retornoWatsonSTT . '". Contextualizando a frase...';
+                sendTelegramMessage($mensagem->chat, $textoEnviar);
+                var_dump($textoEnviar);
+
+                $retornoWatsonCON = consultarWatsonCON($retornoWatsonSTT);
+
+                $textoEnviar = 'A resposta é: "' . $retornoWatsonCON . '".';
+                sendTelegramMessage($mensagem->chat, $textoEnviar);
+                var_dump($textoEnviar);
             }
-        }else{
-            echo 'Não é mensagem de texto'."\n";
-        }
-    }
-
-    function getData($URL){
-        $retornoJSON = file_get_contents($URL);
-
-        $retorno = json_decode($retornoJSON);
-
-        if($retorno->ok === true){
-            $conteudo = $retorno->result;
-        }else{
-            var_dump($retorno);
+            echo 'URL áudio: ' . $URL_AUDIO_TELEGRAM . "\n";
             exit;
+        }else{
+            echo 'Não é mensagem de voz'."\n";
         }
-
-        return $conteudo;
-    }
-    function prepareAudioFile($voice){
-        $URL = TELEGRAM_API_URL . 'getFile?file_id=' . $voice->file_id;
-
-        $conteudo = getData($URL);
-
-        return $conteudo;
-    }
-    function getURLAudioFile($voicePrepared){
-        $URL = TELEGRAM_API_URL_BASE . 'file/bot' . TELEGRAM_API_TOKEN . '/' . $voicePrepared->file_path . '?file_id=' . $voicePrepared->file_id;
-        
-        return $URL;
-    }
-    function sendMessage($chat, $text){
-        $URL = TELEGRAM_API_URL . 'sendMessage?chat_id=' . $chat->id . '&text=' . $text;
-
-        $conteudo = getData($URL);
-
-        return $conteudo;
-    }
-    function downloadAudioToServer($URL_FROM, $PATH_TO){
-        return file_put_contents($PATH_TO, fopen($URL_FROM, 'r'));
-    }
-    function getPathNameWithFileToStore($FILE_PATH){
-        $PATH_DIR = __DIR__ . '/file/';
-        
-        if(!is_dir($PATH_DIR)){
-            mkdir($PATH_DIR);
-        }
-
-        $NAME_FILE = date('Ymd-His');
-        $EXTENSAO = strrchr($FILE_PATH, '.');
-        $PATH_FULL = $PATH_DIR . $NAME_FILE . $EXTENSAO;
-        $i = 1;
-        while(file_exists($PATH_FULL)){
-            $PATH_FULL = $PATH_DIR . $NAME_FILE . '_' . $i . $EXTENSAO;
-            $i++;
-        }
-
-        return $PATH_FULL;
     }
