@@ -13,6 +13,7 @@
     }
 
     if(isset($jsonDecode->message)){
+        $message = $jsonDecode->message;
         if(isset($message->voice)){
             $textoEnviar = 'Processando o áudio...';
             sendTelegramMessage($message->chat, $textoEnviar);

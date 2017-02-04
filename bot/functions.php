@@ -26,7 +26,7 @@
         return $URL;
     }
     function sendTelegramMessage($chat, $text){
-        $URL = TELEGRAM_API_URL . 'sendMessage?chat_id=' . $chat->id . '&text=' . $text;
+        $URL = TELEGRAM_API_URL . 'sendMessage?chat_id=' . $chat->id . '&text=' . urlencode($text);
 
         $conteudo = getTelegramData($URL);
 
