@@ -1,6 +1,20 @@
 <?php
+    function getContentFromURL($URL){
+        $handle = fopen($URL, 'r');
+        $buffer = '';
+        if ($handle) {
+            while (!feof($handle)) {
+                $buffer .= fgets($handle, 5000);
+            }
+            fclose($handle);
+        }
+
+        //$buffer = file_get_contents($URL);
+
+        return $buffer;
+    }
     function getTelegramData($URL){
-        $retornoJSON = file_get_contents($URL);
+        $retornoJSON = getContentFromURL($URL);
 
         $retorno = json_decode($retornoJSON);
 
@@ -58,7 +72,7 @@
     function consultarWatsonSTT($URL_AUDIO){
         $URL = WATSON_API_URL_STT . $URL_AUDIO;
         
-        $retornoJSON = file_get_contents($URL);
+        $retornoJSON = getContentFromURL($URL);
 
         $retorno = json_decode($retornoJSON);
         
@@ -76,7 +90,7 @@
     function consultarWatsonCON($text){
         $URL = WATSON_API_URL_CON . urlencode($text);
         
-        $retornoJSON = file_get_contents($URL);
+        $retornoJSON = getContentFromURL($URL);
 
         $retorno = json_decode($retornoJSON);
 
