@@ -9,7 +9,7 @@
     if(empty($jsonDecode)){
         sendTelegramMessage($logTelegramChat, 'Nenhuma informação recebida no JSON');
     }else{
-        sendTelegramMessage($logTelegramChat, $jsonDecode);
+        sendTelegramMessage($logTelegramChat, $jsonReceived);
     }
 
     if(isset($jsonDecode->message)){
