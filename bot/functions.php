@@ -2,7 +2,7 @@
     function getContentFromURL($URL){
         //return file_get_contents($URL);
         return curl_get_contents($URL);
-        
+
         $handle = fopen($URL, 'r');
         $buffer = '';
         if ($handle) {
@@ -50,8 +50,15 @@
         
         return $URL;
     }
-    function sendTelegramMessage($chat, $text){
-        $URL = TELEGRAM_API_URL . 'sendMessage?chat_id=' . $chat->id . '&text=' . urlencode($text);
+    function sendTelegramMessage($message, $text){
+        $URL = TELEGRAM_API_URL . 'sendMessage?chat_id=' . $message->chat->id . '&text=' . urlencode($text) . '&reply_to_message_id=' . $message->message_id;
+
+        $conteudo = getTelegramData($URL);
+
+        return $conteudo;
+    }
+    function sendTelegramVoice($message, $URL_VOICE_FILE){
+        $URL = TELEGRAM_API_URL . 'sendVoice?chat_id=' . $message->chat->id . '&voice=' . urlencode($URL_VOICE_FILE) . '&reply_to_message_id=' . $message->message_id;
 
         $conteudo = getTelegramData($URL);
 
@@ -113,4 +120,9 @@
         }
 
         return $conteudo;
+    }
+    function consultarWatsonTTS($text){
+        $URL = WATSON_API_URL_TTS . urlencode($text);
+
+        return $URL;
     }
