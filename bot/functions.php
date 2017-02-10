@@ -24,6 +24,20 @@
         curl_close($curl);
         return $data;
     }
+    function postVoiceData($URL_TO_SEND, $voiceData){
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $URL_TO_SEND);
+        curl_setopt($curl, CURLOPT_HEADER, true);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, array('Content-Type: multipart/form-data'));
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_POST, true);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, $voiceData.';type=audio/ogg');
+        //curl_setopt($curl, CURLOPT_POSTFIELDS, array("filedata" => "@$data", "filename" => 'teste.ogg'));
+        $result = curl_exec($curl);
+        curl_close($curl);
+
+        return $result;
+    }
     function getTelegramData($URL){
         $retornoJSON = getContentFromURL($URL);
 
@@ -50,6 +64,13 @@
         
         return $URL;
     }
+    function sendTelegramChatAction($message, $action){
+        $URL = TELEGRAM_API_URL . 'sendChatAction?chat_id=' . $message->chat->id . '&action=' . $action;
+
+        $conteudo = getTelegramData($URL);
+
+        return $conteudo;
+    }
     function sendTelegramMessage($message, $text){
         $URL = TELEGRAM_API_URL . 'sendMessage?chat_id=' . $message->chat->id . '&text=' . urlencode($text) . '&reply_to_message_id=' . $message->message_id;
 
@@ -57,26 +78,30 @@
 
         return $conteudo;
     }
-    function sendTelegramVoice($message, $URL_VOICE_FILE){
+    function sendTelegramVoice($message, $voiceData){
         $URL = TELEGRAM_API_URL . 'sendVoice?chat_id=' . $message->chat->id . '&voice=' . urlencode($URL_VOICE_FILE) . '&reply_to_message_id=' . $message->message_id;
+        $URL = TELEGRAM_API_URL . 'sendVoice?chat_id=' . $message->chat->id . '&reply_to_message_id=' . $message->message_id;
 
-        $conteudo = getTelegramData($URL);
+        //$conteudo = getTelegramData($URL);
+        $retorno = postVoiceData($URL, $voiceData);
 
-        return $conteudo;
+        return $retorno;
     }
     function downloadFileToServer($URL_FROM, $PATH_TO, $originalFileName = true){
-        if($originalFileName){
-            $FILE_NAME = strrchr($URL_FROM, '/');
-        }else{
-            $FILE_NAME = date('Ymd-His');
-        }
+        $FILE_NAME = strrchr($URL_FROM, '/');
         $EXTENSION = strrchr($FILE_NAME, '.');
 
-        $FULL_PATH = $PATH_TO . $FILE_NAME . $EXTENSION;
+        if($originalFileName){
+            $ONLY_NAME = substr($FILE_NAME, 0, strrpos($FILE_NAME, '.'));
+        }else{
+            $ONLY_NAME = '/' . date('Ymd-His');
+        }
+
+        $FULL_PATH = $PATH_TO . $ONLY_NAME . $EXTENSION;
         $i = 0;
         while(file_exists($FULL_PATH)){
             $i++;
-            $FULL_PATH = $PATH_TO . $FILE_NAME . '_' . $i . $EXTENSION;
+            $FULL_PATH = $PATH_TO . $ONLY_NAME . '_' . $i . $EXTENSION;
         }
 
         $qtdBytes = file_put_contents($FULL_PATH, fopen($URL_FROM, 'r'));
@@ -84,7 +109,8 @@
         if($qtdBytes === false){
             return false;
         }else{
-            return strrchr($FULL_PATH, '/');
+            $FILE_NAME_SAVED = strrchr($FULL_PATH, '/');
+            return $FILE_NAME_SAVED;
         }
     }
     function consultarWatsonSTT($URL_AUDIO){
@@ -124,5 +150,56 @@
     function consultarWatsonTTS($text){
         $URL = WATSON_API_URL_TTS . urlencode($text);
 
-        return $URL;
+        $retornoRAW = getContentFromURL($URL);
+
+        return $retornoRAW;
+    }
+    function processarChatBot($message){
+        if(isset($message->text)){
+            $text = $message->text;
+            if($text == '/start'){
+                $textoEnviar = 'Bem-vindo ao Chatbot do Me Defenda. Para interagir, envie uma mensagem de voz/áudio.';
+                sendTelegramMessage($message, $textoEnviar);
+                var_dump($textoEnviar);
+            }else{
+                $textoEnviar = 'Estamos aprimorando o serviço, no momento não foi possível processar o seu comando.';
+                sendTelegramMessage($message, $textoEnviar);
+                var_dump($textoEnviar);
+            }
+        }else if(isset($message->voice)){
+            //altera o status do ChatBot para o usuário ter um retorno do que está acontecendo
+            //$retorno = sendTelegramChatAction($message, 'upload_audio');
+            $retorno = sendTelegramChatAction($message, 'typing');
+            var_dump($retorno);
+
+            $voice = $message->voice;
+
+            $voicePrepared = prepareTelegramFile($voice);
+            
+            $URL_AUDIO_TELEGRAM = getTelegramFileURL($voicePrepared);
+
+            $retornoWatsonSTT = consultarWatsonSTT($URL_AUDIO_TELEGRAM);
+            if(empty($retornoWatsonSTT)){
+                $textoEnviar = 'Não foi possível processar o áudio.';
+                sendTelegramMessage($message, $textoEnviar);
+                var_dump($textoEnviar);
+            }else{
+                $textoEnviar = 'Entendemos: "' . $retornoWatsonSTT . '". Contextualizando a frase...';
+                sendTelegramMessage($message, $textoEnviar);
+                var_dump($textoEnviar);
+
+                $retornoWatsonCON = consultarWatsonCON($retornoWatsonSTT);
+
+                $textoEnviar = 'A resposta é: "' . $retornoWatsonCON . '".';
+                sendTelegramMessage($message, $textoEnviar);
+                var_dump($textoEnviar);
+
+                //$retornoWatsonTTS = consultarWatsonTTS($retornoWatsonCON);
+                //$retorno = sendTelegramVoice($message, $retornoWatsonTTS);
+                //var_dump($retorno);
+            }
+        }else{
+            $retorno = sendTelegramMessage($message, 'Desculpe, no momento só é aceito mensagem de voz.');
+            var_dump($retorno);
+        }
     }
